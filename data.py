@@ -43,27 +43,3 @@ train_loader = DataLoader(training_data, batch_size=2, shuffle=True)
 # axs[0].imshow(batch['image'][0].squeeze().permute(1, 2, 0))
 # axs[1].imshow(batch['label'][0].squeeze().permute(1, 2, 0))
 # plt.show()
-
-
-import torch
-import torchvision.models as models
-import torch.nn as nn
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-print(models.segmentation.fcn_resnet50(pretrained=True))
-
-class BuildingMobilenet(nn.Module):
-    def __init__(self, backbone = models.segmentation.fcn_resnet50(pretrained=True)):
-        super(BuildingMobilenet, self).__init__()
-        self.backbone = backbone
-        backbone.classifier = nn.Sequential(
-            nn.Conv2d(2048, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False),
-            nn.BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
-
-        )
-
-
-
-
-print(BuildingMobilenet())
