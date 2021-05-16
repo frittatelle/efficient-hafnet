@@ -85,7 +85,7 @@ class PotsdamPatchesDataset(Dataset):
             "dsm": dsm_patch,
             "label": label_patch,
         }
-        return patch
+        return (patch_id, rgb_patch, dsm_patch, label_patch)
 
 
 if __name__ == '__main__':
