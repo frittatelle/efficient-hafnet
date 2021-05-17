@@ -21,10 +21,11 @@ if __name__ == '__main__':
     # training hyperparameters
     epochs = 1
     lr = 0.001
-    batch_size = 15
+    batch_size = 1
 
     # model
-    model = HAFNet.HAFNet().to(device)
+    model = HAFNet.HAFNet()
+    model.cuda()
 
     # loss and optimizer
     criterion = nn.CrossEntropyLoss()
@@ -48,7 +49,7 @@ if __name__ == '__main__':
         # loop over images in the original dataset
         for (image_idx, patches_set) in enumerate(tr_potsdam_dataloader):
 
-            potsdam_patches_dataset = PotsdamPatchesDataset(patches_set)
+            potsdam_patches_dataset = PotsdamPatchesDataset(patches_set, device=device)
             potsdam_patches_loader = DataLoader(potsdam_patches_dataset, batch_size=batch_size, shuffle=True)
 
             image_time = time.time()
@@ -58,7 +59,7 @@ if __name__ == '__main__':
 
                 (_, rgb_patch, dsm_patch, label_patch) = patch
                 cuda_time = time.time()
-                rgb_patch, dsm_patch, label_patch = rgb_patch.to(device), dsm_patch.to(device), label_patch.to(device)
+                # rgb_patch, dsm_patch, label_patch = rgb_patch, dsm_patch, label_patch
                 print('\n------------------------------')
                 print('cuda time', time.time() - cuda_time)
                 optimizer.zero_grad()

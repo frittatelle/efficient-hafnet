@@ -60,7 +60,8 @@ class PotsdamPatchesDataset(Dataset):
     """Potsdam Patches dataset: takes patches as input
      and apply transformations and stuff"""
 
-    def __init__(self, patches, transform=None, target_transform=None):
+    def __init__(self, patches, transform=None, target_transform=None, device='cuda'):
+        self.device = device
         self.patches = patches
         self.transform = transform
         self.target_transform = target_transform
@@ -73,6 +74,10 @@ class PotsdamPatchesDataset(Dataset):
         rgb_patch = self.patches["rgb_patches"][0][idx]
         dsm_patch = self.patches["dsm_patches"][0][idx]
         label_patch = self.patches["labels_patches"][0][idx]
+        if self.device == 'cuda':
+            rgb_patch = rgb_patch.cuda()
+            dsm_patch = dsm_patch.cuda()
+            label_patch = label_patch.cuda()
         # TODO: apply augmentation
         if self.transform:
             rgb_patch = self.transform(rgb_patch)
