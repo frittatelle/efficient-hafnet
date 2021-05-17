@@ -7,8 +7,8 @@ from PIL import Image
 import numpy as np
 from torch.utils.data import DataLoader
 
-class PotsdamDataset(Dataset):
 
+class PotsdamDataset(Dataset):
     """Potsdam"""
 
     def __init__(self, rgb_dir, dsm_dir, labels_dir, transform=None, patch_size=128, patch_stride=64):
@@ -39,6 +39,7 @@ class PotsdamDataset(Dataset):
         rgb_patches = self.extract_patches(rgb, self.patch_size, self.patch_stride)
         dsm_patches = self.extract_patches(dsm, self.patch_size, self.patch_stride, channels=1)
         labels_patches = self.extract_patches(labels, self.patch_size, self.patch_stride)
+        torch.cuda.empty_cache()
         patches = {
             "id": rgb_fn,
             "rgb_patches": rgb_patches,
@@ -56,7 +57,6 @@ class PotsdamDataset(Dataset):
 
 
 class PotsdamPatchesDataset(Dataset):
-
     """Potsdam Patches dataset: takes patches as input
      and apply transformations and stuff"""
 
@@ -90,13 +90,15 @@ class PotsdamPatchesDataset(Dataset):
 
 if __name__ == '__main__':
     import time
+
     start_time = time.time()
     potsdam_dataset = PotsdamDataset("data/Potsdam/2_Ortho_RGB", "data/Potsdam/1_DSM", "data/Potsdam/Building_Labels")
-    potsdam_loader = DataLoader(potsdam_dataset, batch_size=1, shuffle=True)
+    potsdam_loader = DataLoader(potsdam_dataset, batch_size=1)
     potsdam_patches = next(iter(potsdam_loader))
+    print("--- %s seconds ---" % (time.time() - start_time))
 
     potsdam_patches_dataset = PotsdamPatchesDataset(potsdam_patches)
-    potsdam_patches_loader = DataLoader(potsdam_patches_dataset, batch_size=10, shuffle=True)
+    potsdam_patches_loader = DataLoader(potsdam_patches_dataset, batch_size=1, shuffle=True)
     patch = next(iter(potsdam_patches_loader))
-    print(patch['rgb'].shape, patch['dsm'].shape, patch['label'].shape)
-    print("--- %s seconds ---" % (time.time() - start_time))
+    (patch_id, rgb_patch, dsm_patch, label_patch) = patch
+    print(rgb_patch.shape, dsm_patch.shape, label_patch.shape)
