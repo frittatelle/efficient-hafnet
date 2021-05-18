@@ -10,7 +10,11 @@ from torch.utils.data import DataLoader, random_split
 from data import PotsdamDataset, PotsdamPatchesDataset
 from models import HAFNet
 
+import wandb
+
 if __name__ == '__main__':
+
+    wandb.init(project="efficient-hafnet")
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -21,11 +25,13 @@ if __name__ == '__main__':
     # training hyperparameters
     epochs = 1
     lr = 0.001
-    batch_size = 10
+    batch_size = 25
 
     # model
     model = HAFNet.HAFNet(out_channel=1)
     model.cuda()
+
+    wandb.watch(model, log_freq=10)
 
     # loss and optimizer
     criterion = nn.BCEWithLogitsLoss()
@@ -63,14 +69,21 @@ if __name__ == '__main__':
                 cuda_time = time.time()
                 rgb_patch, dsm_patch, label_patch = rgb_patch.cuda(), dsm_patch.cuda(), label_patch.cuda()
                 print('\n------------------------------')
-                # print('cuda time', time.time() - cuda_time)
+                print('cuda time', time.time() - cuda_time)
                 optimizer.zero_grad()
                 forward_time = time.time()
                 pred = model(rgb_patch, dsm_patch)
+                print('forward time', time.time() - forward_time)
                 loss = criterion(pred, label_patch)
+                backprop_time = time.time()
+                loss.backward()
+                print('backprop time', time.time() - backprop_time)
                 optimizer.step()
                 print('loss ', loss.item())
-                # print('forward time', time.time() - forward_time)
+                if patch_idx % 10 == 0:
+                    wandb.log({
+                        'loss': loss
+                    })
                 print(image_idx, len(tr_potsdam_dataloader), patch_idx, len(potsdam_patches_loader), pred.shape)
 
                 # print(image_idx, patch_idx, rgb_patch.shape, dsm_patch.shape, label_patch.shape)
