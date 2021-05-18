@@ -38,8 +38,7 @@ class PotsdamDataset(Dataset):
         # extract patches
         rgb_patches = self.extract_patches(rgb, self.patch_size, self.patch_stride)
         dsm_patches = self.extract_patches(dsm, self.patch_size, self.patch_stride, channels=1)
-        labels_patches = self.extract_patches(labels, self.patch_size, self.patch_stride)
-        torch.cuda.empty_cache()
+        labels_patches = self.extract_patches(labels, self.patch_size, self.patch_stride, channels=1)
         patches = {
             "id": rgb_fn,
             "rgb_patches": rgb_patches,
@@ -74,10 +73,6 @@ class PotsdamPatchesDataset(Dataset):
         rgb_patch = self.patches["rgb_patches"][0][idx]
         dsm_patch = self.patches["dsm_patches"][0][idx]
         label_patch = self.patches["labels_patches"][0][idx]
-        if self.device == 'cuda':
-            rgb_patch = rgb_patch.cuda()
-            dsm_patch = dsm_patch.cuda()
-            label_patch = label_patch.cuda()
         # TODO: apply augmentation
         if self.transform:
             rgb_patch = self.transform(rgb_patch)
@@ -90,7 +85,7 @@ class PotsdamPatchesDataset(Dataset):
             "dsm": dsm_patch,
             "label": label_patch,
         }
-        return (patch_id, rgb_patch, dsm_patch, label_patch)
+        return patch
 
 
 if __name__ == '__main__':
@@ -105,5 +100,5 @@ if __name__ == '__main__':
     potsdam_patches_dataset = PotsdamPatchesDataset(potsdam_patches)
     potsdam_patches_loader = DataLoader(potsdam_patches_dataset, batch_size=1, shuffle=True)
     patch = next(iter(potsdam_patches_loader))
-    (patch_id, rgb_patch, dsm_patch, label_patch) = patch
+    (patch_id, rgb_patch, dsm_patch, label_patch) = (patch['id'], patch['rgb'], patch['dsm'], patch['label'])
     print(rgb_patch.shape, dsm_patch.shape, label_patch.shape)

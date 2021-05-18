@@ -21,18 +21,18 @@ if __name__ == '__main__':
     # training hyperparameters
     epochs = 1
     lr = 0.001
-    batch_size = 1
+    batch_size = 10
 
     # model
-    model = HAFNet.HAFNet()
+    model = HAFNet.HAFNet(out_channel=1)
     model.cuda()
 
     # loss and optimizer
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
 
     # datasets
-    potsdam_dataset = PotsdamDataset(rgb_dir, dsm_dir, labels_dir, patch_stride=128)
+    potsdam_dataset = PotsdamDataset(rgb_dir, dsm_dir, labels_dir, patch_stride=64)
     potsdam_dataloader = DataLoader(potsdam_dataset, batch_size=1, shuffle=True)
 
     # training and test set definition
@@ -42,6 +42,8 @@ if __name__ == '__main__':
 
     # Loop over images and extract patches
     tr_potsdam_dataloader = DataLoader(tr_potsdam_dataset, batch_size=1, shuffle=True)
+
+    i = 0
 
     # epochs
     for epoch in range(epochs):
@@ -57,21 +59,23 @@ if __name__ == '__main__':
             # loop over patches of single image in original dataset
             for (patch_idx, patch) in enumerate(potsdam_patches_loader):
 
-                (_, rgb_patch, dsm_patch, label_patch) = patch
+                patch_id, rgb_patch, dsm_patch, label_patch = patch['id'], patch['rgb'], patch['dsm'], patch['label']
                 cuda_time = time.time()
-                # rgb_patch, dsm_patch, label_patch = rgb_patch, dsm_patch, label_patch
+                rgb_patch, dsm_patch, label_patch = rgb_patch.cuda(), dsm_patch.cuda(), label_patch.cuda()
                 print('\n------------------------------')
-                print('cuda time', time.time() - cuda_time)
+                # print('cuda time', time.time() - cuda_time)
                 optimizer.zero_grad()
                 forward_time = time.time()
                 pred = model(rgb_patch, dsm_patch)
-                # loss = criterion(pred, label_patch)
-                # optimizer.step()
-                # print(loss)
-                print('forward time', time.time() - forward_time)
+                loss = criterion(pred, label_patch)
+                optimizer.step()
+                print('loss ', loss.item())
+                # print('forward time', time.time() - forward_time)
                 print(image_idx, len(tr_potsdam_dataloader), patch_idx, len(potsdam_patches_loader), pred.shape)
 
                 # print(image_idx, patch_idx, rgb_patch.shape, dsm_patch.shape, label_patch.shape)
 
             print('image time ', time.time() - image_time)
-            break
+            i = i + 1
+            if i == 3:
+                break
