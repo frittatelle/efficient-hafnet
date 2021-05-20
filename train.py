@@ -1,16 +1,22 @@
 import time
 
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, random_split
 
 from data import PotsdamDataset, PotsdamPatchesDataset
-from models import HAFNet
+from models import HAFNet_unipv
+
+import wandb
 
 if __name__ == '__main__':
+
+    # wandb.init(project="fenix", reinit=True)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -20,16 +26,22 @@ if __name__ == '__main__':
 
     # training hyperparameters
     epochs = 1
-    lr = 0.001
+    lr = 0.01
     batch_size = 10
 
     # model
-    model = HAFNet.HAFNet(out_channel=1)
+    model = HAFNet_unipv.HAFNet(out_channel=1)
     model.cuda()
+
+    # wandb.watch(model, log_freq=10)
+
+    rgb_parameters = [param for name, param in model.named_parameters() if 'RGB_E' in name]
+    parameters = [param for name, param in model.named_parameters() if 'RGB_E' not in name]
 
     # loss and optimizer
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+    rgb_optimizer = optim.SGD(rgb_parameters, lr=lr/10, momentum=0.9)
+    optimizer = optim.SGD(parameters, lr=lr, momentum=0.9)
 
     # datasets
     potsdam_dataset = PotsdamDataset(rgb_dir, dsm_dir, labels_dir, patch_stride=64)
@@ -63,19 +75,38 @@ if __name__ == '__main__':
                 cuda_time = time.time()
                 rgb_patch, dsm_patch, label_patch = rgb_patch.cuda(), dsm_patch.cuda(), label_patch.cuda()
                 print('\n------------------------------')
-                # print('cuda time', time.time() - cuda_time)
+                print('cuda time', time.time() - cuda_time)
+                rgb_optimizer.zero_grad()
                 optimizer.zero_grad()
                 forward_time = time.time()
                 pred = model(rgb_patch, dsm_patch)
                 loss = criterion(pred, label_patch)
+                loss.backward()
+                rgb_optimizer.step()
                 optimizer.step()
                 print('loss ', loss.item())
-                # print('forward time', time.time() - forward_time)
+                # if patch_idx % 10 == 0:
+                #     wandb.log({
+                #         "loss": loss
+                #     })
+                if patch_idx % 8000 == 0:
+                    pred = F.sigmoid(pred)
+                    pred = pred.cpu()
+                    rgb_patch = rgb_patch.cpu()
+                    dsm_patch = dsm_patch.cpu()
+                    label_patch = label_patch.cpu()
+                    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+                    ax1.imshow(rgb_patch.squeeze().permute(1, 2, 0))
+                    ax2.imshow(dsm_patch.detach().squeeze())
+                    ax3.imshow(label_patch.detach().squeeze())
+                    ax4.imshow(pred.detach().squeeze())
+                    plt.show()
+                print('forward time', time.time() - forward_time)
                 print(image_idx, len(tr_potsdam_dataloader), patch_idx, len(potsdam_patches_loader), pred.shape)
 
                 # print(image_idx, patch_idx, rgb_patch.shape, dsm_patch.shape, label_patch.shape)
 
             print('image time ', time.time() - image_time)
             i = i + 1
-            if i == 3:
+            if i == 13:
                 break
