@@ -5,8 +5,8 @@ import cv2
 import numpy as np
 
 if __name__ == '__main__':
-    label_dir = "data/Potsdam/5_Labels_all"
-    building_label_dir = "data/Potsdam/Building_Labels"
+    label_dir = "data/Vaihingen/gts_for_participants"
+    building_label_dir = "data/Vaihingen/Building_Labels"
     labels_list = os.listdir(label_dir)
 
     # building_color = np.array([0, 0, 255])
@@ -21,7 +21,7 @@ if __name__ == '__main__':
         result = cv2.bitwise_and(image, image, mask=mask)
         rgb_result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
         result_filename = os.path.join(building_label_dir, label_image)
-        cv2.imwrite(result_filename, mask)
+        cv2.imwrite(result_filename, rgb_result)
 
-    # plt.imshow(rgb_result)
-    # plt.show()
+    plt.imshow(rgb_result)
+    plt.show()

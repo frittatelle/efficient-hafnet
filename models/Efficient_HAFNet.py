@@ -5,7 +5,10 @@ import segmentation_models_pytorch as smp
 from segmentation_models_pytorch.encoders._base import EncoderMixin
 from segmentation_models_pytorch.encoders.efficientnet import EfficientNetEncoder, _get_pretrained_settings
 
+import time
+
 from torchsummaryX import summary
+import torchinfo
 
 
 class SEBlock(nn.Module):
@@ -82,14 +85,6 @@ class EfficientHAFNetCMEncoder(EfficientNetEncoder, EncoderMixin):
 
     def load_state_dict(self, state_dict, **kwargs):
         super().load_state_dict(state_dict, strict=False, **kwargs)
-
-    @staticmethod
-    def get_out_channels(out_channels):
-        out_channels = list(out_channels)
-        # Remove first convolutional stage,
-        # (CM stream has one conv stage less)
-        out_channels.pop(1)
-        return tuple(out_channels)
 
     @staticmethod
     def get_se_blocks_list(out_channels):
@@ -185,18 +180,30 @@ smp.encoders.encoders["efficienthafnet-cm-b4"] = {
 }
 
 if __name__ == '__main__':
-    rgb = torch.randn(10, 3, 160, 160)
-    dsm = torch.randn(10, 1, 160, 160)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    rgb = torch.randn(1, 3, 128, 128, device=device)
+    dsm = torch.randn(1, 1, 128, 128, device=device)
 
-    model = smp.Unet(
-        encoder_name="efficienthafnet-cm-b0",
-    )
 
     efficient_hafnet = EfficientHAFNet(encoder_name='efficientnet-b0', encoder_weights='imagenet')
+    efficient_hafnet.to(device)
+    efficient_hafnet.eval()
 
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+
+
+    inf_time = time.time()
     pred, feats, preds = efficient_hafnet(rgb, dsm)
-    summary(efficient_hafnet, rgb, dsm)
+    print(time.time() - inf_time)
+
+    # summary(efficient_hafnet, rgb, dsm)
+    # torchinfo.summary(model, input_size=(10, 3, 224, 224))
+
 
     from models.HAFNet import HAFNet
     hafnet = HAFNet(out_channel=1)
-    summary(hafnet, rgb, dsm)
+    hafnet.to(device)
+    inf_time = time.time()
+    p = hafnet(rgb, dsm)
+    print(time.time() - inf_time)
+    # summary(hafnet, rgb, dsm)
